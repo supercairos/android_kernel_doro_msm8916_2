@@ -293,6 +293,29 @@ static const struct qpnp_vadc_map_pt adcmap_qrd_skug_btm_threshold[] = {
 };
 
 static const struct qpnp_vadc_map_pt adcmap_qrd_skuh_btm_threshold[] = {
+#if 1				// byd lab test params
+	{-200,	1586},
+	{-150,	1525},
+	{-100,	1453},
+	{-50,	1372},
+	{0,	1287},
+	{50,	1200},
+	{100,	1112},
+	{150,	1025},
+	{200,	955},
+	{250,	890},
+	{300,	830},
+	{350,	785},
+	{400,	738},
+	{450,	700},
+	{500,	670},
+	{550,	644},
+	{600,	622},
+	{650,	606},
+	{700,	593},
+	{750,	584},
+	{800,	577},
+#else				// qcom params
 	{-200,	1531},
 	{-180,	1508},
 	{-160,	1483},
@@ -348,6 +371,7 @@ static const struct qpnp_vadc_map_pt adcmap_qrd_skuh_btm_threshold[] = {
 	{840,	530},
 	{860,	524},
 	{880,	520},
+#endif
 };
 
 /* Voltage to temperature */
