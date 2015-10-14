@@ -16,7 +16,7 @@
  * VERSION = "1.0"
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
-	dsi_hx8394d_720_vid: qcom,mdss_dsi_hx8394d_720p_video {
+	dsi_yt50f_720_vid: qcom,mdss_dsi_yt50f_720p_video {
 		qcom,mdss-dsi-panel-name = "hx8394d 720p video mode dsi panel";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
@@ -26,13 +26,13 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
 		qcom,mdss-dsi-panel-height = <1280>;
-		qcom,mdss-dsi-h-front-porch = <75>;
-		qcom,mdss-dsi-h-back-porch = <75>;
-		qcom,mdss-dsi-h-pulse-width = <20>;
+		qcom,mdss-dsi-h-front-porch = <150>;
+		qcom,mdss-dsi-h-back-porch = <91>;
+		qcom,mdss-dsi-h-pulse-width = <36>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
-		qcom,mdss-dsi-v-back-porch = <12>;
-		qcom,mdss-dsi-v-front-porch = <15>;
-		qcom,mdss-dsi-v-pulse-width = <4>;
+		qcom,mdss-dsi-v-back-porch = <8>;
+		qcom,mdss-dsi-v-front-porch = <12>;
+		qcom,mdss-dsi-v-pulse-width = <2>;
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <0>;
 		qcom,mdss-dsi-v-top-border = <0>;
@@ -45,72 +45,56 @@
                             b9 ff 83 94
 				39 01 00 00 00 00 03
                             ba 33 83
+				39 01 00 00 00 00 05
+                            b0 00 00 7d 0c
 				39 01 00 00 00 00 10
-                            b1 6c 12 12 24
-                            04 11 f1 80 e8
-                            99 23 80 c0 d2
+                            b1 6c 12 12 34
+                            04 11 f1 80 9f
+                            a0 23 80 c0 d2
                             58
-				39 01 00 00 00 00 0c
-                            b2 00 64 10 07
-							22 1c 08 08 1c
-							4d 00
+				39 01 00 00 00 00 06
+                            b2 00 64 05 07
+							22
+				39 01 00 00 00 00 0d
+                            b4 00 ff 03 5a
+							03 5a 03 5a 01
+							70 01 70
 				39 01 00 00 00 00 02
                             bc 07
-				39 01 00 00 00 00 04
-                            bf 41 0e 01
-				39 01 00 00 00 00 0d
-                            b4 00 ff 50 51
-							50 51 50 51 02
-							6a 02 6a
-				39 01 00 00 00 00 1f
-                            d3 30 00 00 40
-                            07 00 00 32 10
-                            09 00 09 52 15
-							11 05 11 32 10
-							00 00 00 37 33
-							0d 0d 37 0c 0c
-							47
-				39 01 00 00 00 00 2d
-                            d5 20 21 00 01
-							02 03 04 05 06
-							07 18 18 18 18
-							18 18 18 18 18
-							18 18 18 18 18
-							18 18 18 18 18
-							18 18 18 18 18
-							18 18 18 18 19
-							19 18 18 24 25
-				39 01 00 00 00 00 2d
-                            d6 24 25 07 06
-							05 04 03 02 01
-							00 18 18 18 18
-							18 18 18 18 58
-							58 18 18 18 18
-							18 18 18 18 18
-							18 18 18 18 18
-							18 18 18 18 18
-							18 19 19 20 21
 				39 01 00 00 00 00 2b
-                            e0 06 12 15 36
-							30 3b 20 42 07
-							0a 0c 17 0e 12
-							16 14 15 07 14
-							13 14 04 12 15
-							36 30 3b 20 42
-							07 0a 0c 17 0e
-							12 16 14 15 07
-							14 13 14
-				39 01 00 00 00 00 03
-                            b6 a2 a2
+							e0 16 28 2e 31 34 3F 36 4c 09
+							0c 0d 18 0f 11 14 13 14 07 11
+							14 16 16 29 2e 31 35 3F 37 4b
+							09 0c 0d 17 0e 12 13 12 15 08
+							13 13 18
+				39 01 00 00 00 00 35
+							D3 00 06 00 01 01 10 00 32 10
+							00 00 00 32 15 04 35 04 32 15
+							14 05 14 37 33 00 00 37 00 07
+							37 08 00 00 00 0A 00 01 00 00
+							00 00 00 00 00 07 05 0F 02 10
+							0B 10 00
+				39 01 00 00 00 00 2d
+							D5 18 18 18 18 18 18 18 18 18
+							18 18 18 18 18 25 24 27 26 18
+							18 47 46 43 42 41 40 45 44 05
+							04 01 00 07 06 03 02 21 20 23
+							22 18 18 18 18
+				39 01 00 00 00 00 2d
+							d6 18 18 18 18 18 18 18 18 18
+							18 18 18 18 18 22 23 20 21 18
+							18 00 01 04 05 06 07 02 03 02
+							03 06 07 00 01 04 05 06 07 04
+							15 18 18 18 18
 				39 01 00 00 00 00 02
                             cc 05
 				39 01 00 00 00 00 03
-                            c0 30 14
+                            b6 51 51
 				39 01 00 00 00 00 05
-                            c7 00 c0 40 c0
-				05 01 00 00 78 00 02
+                            c7 00 c0 01 c0
+				05 01 00 00 c8 00 02
                             11 00
-				05 01 00 00 00 00 02
+				05 01 00 00 0a 00 02
                             29 00];
 		qcom,mdss-dsi-off-command = [05 01 00 00 37 00 02 28 00
 				05 01 00 00 05 00 02 10 00];
@@ -124,7 +108,7 @@
 		qcom,mdss-dsi-lane-1-state;
 		qcom,mdss-dsi-lane-2-state;
 		qcom,mdss-dsi-lane-3-state;
-		qcom,mdss-dsi-panel-timings = [2c 20 14 00 46 4A 1A 24 18 03 04 00];
+		qcom,mdss-dsi-panel-timings = [2c 24 18 00 4c 50 1c 28 1c 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x04>;
 		qcom,mdss-dsi-t-clk-pre = <0x18>;
 		qcom,mdss-dsi-bl-min-level = <1>;
