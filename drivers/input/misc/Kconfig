@@ -830,5 +830,18 @@ config SENSORS_BMI058
 	 If you say yes here, you get support for Bosch Sensortec's
 	 sensor driver of BMI058.
 
-endif
+config SENSORS_LTR559
+	tristate "LTR559 Digital P/L sensor support"
+	depends on I2C
+	default n
+	help
+	 If you say yes here you get support for LITEON
+	 P/L sensors LTR559.
 
+config SENSORS_HALL		
+ 	bool "hall device"
+	default n
+	help
+	  Enables support for the hall device which used on smart cover.
+
+endif
