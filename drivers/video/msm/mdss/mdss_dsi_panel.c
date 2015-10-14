@@ -535,11 +535,23 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 	return;
 }
 
+#define BRIGHTNESS_ADJUST_PERCENT 245/255
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+
+	//pr_info("%s: bl_level = %d\n", __func__, bl_level);
+
+	bl_level = bl_level * BRIGHTNESS_ADJUST_PERCENT;
+	//printk("%s: bl_level = %d\n", __func__, bl_level);
+	if (bl_level > 0) {
+		if (bl_level < 3)
+			bl_level = 3;
+		else
+			bl_level = bl_level;
+	}
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
