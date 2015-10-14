@@ -412,6 +412,8 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 
 	batt_id_kohm = of_batterydata_convert_battery_id_kohm(batt_id_uv,
 					rpull_up_kohm, vadc_vdd_uv);
+	if(batt_id_kohm==0)   // EU PCB board connect battery id to gnd
+		batt_id_kohm=68;
 	best_node = NULL;
 	best_delta = 0;
 	best_id_kohm = 0;
