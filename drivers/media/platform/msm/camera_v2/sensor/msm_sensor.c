@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 #include "msm_sensor.h"
+#include <linux/gpio.h>
 #include "msm_sd.h"
 #include "camera.h"
 #include "msm_cci.h"
@@ -20,6 +21,16 @@
 
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
+
+#define GPIO_MCAM_MODULE_ID  910
+#define GPIO_SCAM_MODULE_ID  911
+static int mcam_module_id_status = 0;
+static int scam_module_id_status = 0;
+
+extern int ov8858_update_otp(struct msm_sensor_ctrl_t *s_ctrl);
+extern int ov8858_lightarray_update_otp(struct msm_sensor_ctrl_t *s_ctrl);
+extern int ov8858_r2a_update_otp(struct msm_sensor_ctrl_t *s_ctrl);
+extern int ov8858_match_sensor_version(struct msm_sensor_ctrl_t *s_ctrl);
 
 static struct v4l2_file_operations msm_sensor_v4l2_subdev_fops;
 static void msm_sensor_adjust_mclk(struct msm_camera_power_ctrl_t *ctrl)
@@ -488,6 +499,7 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int rc = 0;
+	int sensor_version;
 	uint16_t chipid = 0;
 	struct msm_camera_i2c_client *sensor_i2c_client;
 	struct msm_camera_slave_info *slave_info;
@@ -498,6 +510,14 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 			__func__, __LINE__, s_ctrl);
 		return -EINVAL;
 	}
+
+//add by dmm,for 2nd camera module source part1
+	mcam_module_id_status = gpio_get_value(GPIO_MCAM_MODULE_ID);
+	scam_module_id_status = gpio_get_value(GPIO_SCAM_MODULE_ID);
+	printk("%s: mcam_module_id_status=%d,scam_module_id_status=%d\n",
+		__func__,mcam_module_id_status,scam_module_id_status);
+//add end
+
 	sensor_i2c_client = s_ctrl->sensor_i2c_client;
 	slave_info = s_ctrl->sensordata->slave_info;
 	sensor_name = s_ctrl->sensordata->sensor_name;
@@ -508,6 +528,25 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 			sensor_name);
 		return -EINVAL;
 	}
+
+//add by dmm,for 2nd camera module source part2,for 1st source r2a version sensor IC
+	if (mcam_module_id_status==0 && !strcmp(s_ctrl->sensordata->sensor_name, "ov8858")){
+           CDBG("%s:current rear camera is 2nd source\n",__func__);
+	    return -ENODEV;
+	}
+	if (mcam_module_id_status == 1) {
+		sensor_version = ov8858_match_sensor_version(s_ctrl);
+		if(sensor_version == 0xb2 && (!strcmp(s_ctrl->sensordata->sensor_name, "ov8858") ||
+			!strcmp(s_ctrl->sensordata->sensor_name, "ov8858_lightarray"))) {
+			CDBG("%s:current rear camera is 1st source r2a sensor\n",__func__);
+		return -ENODEV;
+		}
+	}
+	if (scam_module_id_status==0 && !strcmp(s_ctrl->sensordata->sensor_name, "ov2680")){
+           CDBG("%s:current front camera is 2nd source\n",__func__);
+	    return -ENODEV;
+	}
+//add end
 
 	rc = sensor_i2c_client->i2c_func_tbl->i2c_read(
 		sensor_i2c_client, slave_info->sensor_id_reg_addr,
@@ -923,6 +962,20 @@ static int msm_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		break;
 	}
+	//dmm add ov8858 otp
+	case CFG_ODM_UPDATE_OTP: {
+		printk("%s:%d CFG_ODM_UPDATE_OTP sensor name = %s\n", __func__, __LINE__,
+			s_ctrl->sensordata->sensor_name);
+		if (!strcmp(s_ctrl->sensordata->sensor_name, "ov8858")) {
+			ov8858_update_otp(s_ctrl);
+		} else if (!strcmp(s_ctrl->sensordata->sensor_name, "ov8858_lightarray")) {
+			ov8858_lightarray_update_otp(s_ctrl);
+		} else if (!strcmp(s_ctrl->sensordata->sensor_name, "ov8858_r2a")) {
+			ov8858_r2a_update_otp(s_ctrl);
+		}
+		break;
+	}
+	// dmm end
 
 	default:
 		rc = -EFAULT;
@@ -1306,6 +1359,20 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		}
 		break;
 	}
+	//dmm add ov8858 otp
+	case CFG_ODM_UPDATE_OTP: {
+		printk("%s:%d CFG_ODM_UPDATE_OTP sensor name = %s\n", __func__, __LINE__,
+			s_ctrl->sensordata->sensor_name);
+		if (!strcmp(s_ctrl->sensordata->sensor_name, "ov8858")) {
+			ov8858_update_otp(s_ctrl);
+		} else if (!strcmp(s_ctrl->sensordata->sensor_name, "ov8858_lightarray")) {
+			ov8858_lightarray_update_otp(s_ctrl);
+		} else if (!strcmp(s_ctrl->sensordata->sensor_name, "ov8858_r2a")) {
+			ov8858_r2a_update_otp(s_ctrl);
+		}
+		break;
+	}
+	// dmm end
 	default:
 		rc = -EFAULT;
 		break;
