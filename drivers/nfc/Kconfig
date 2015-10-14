@@ -49,3 +49,21 @@ config NFC_QNCI
 	  This enables the NFC driver for QCA199x based devices.
 	  This is for i2c connected version. NCI protocol logic
 	  resides in the usermode and it has no other NFC dependencies.
+
+config NXP_NFC_PN544
+	tristate "NXP PN544 driver"
+	depends on I2C
+	default n
+	help
+	  NXP PN544 USB driver.
+	  This driver provides support for NFC NXP PN544 devices.
+
+	  Say Y here to compile support for PN544 devices into the
+	  kernel or say M to compile it as module (pn544).
+	  
+config NFC_DEBUG
+	bool "NFC debug support"
+	default n
+	help
+	  Say yes here to enable debugging support in the nxp nfc pn547
+	  driver.
