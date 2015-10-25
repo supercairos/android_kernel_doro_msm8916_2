@@ -93,6 +93,7 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+
 		key_camera {
 			label = "key_camera";
 			gpios = <&msm_gpio 108 0x1>;
@@ -101,6 +102,7 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+
 		key_home {
 			label = "key_home";
 			gpios = <&msm_gpio 109 0x1>;
@@ -109,6 +111,7 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+
 		key_back {
 			label = "key_back";
 			gpios = <&msm_gpio 1 0x1>;
@@ -117,6 +120,7 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+
 		key_help {
 			label = "key_help";
 			gpios = <&msm_gpio 98 0x1>;
@@ -125,6 +129,7 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+
 		key_menu {
 			label = "key_menu";
 			gpios = <&msm_gpio 117 0x1>;
@@ -196,15 +201,6 @@
 	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
 
 	#address-cells = <0>;
-//	interrupt-parent = <&sdhc_2>;
-//	interrupts = <0 1 2>;
-//	#interrupt-cells = <1>;
-//	interrupt-map-mask = <0xffffffff>;
-//	interrupt-map = <0 &intc 0 125 0
-//			1 &intc 0 221 0
-//			2 &msm_gpio 38 0>;
-//	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
-//	cd-gpios = <&msm_gpio 38 0x0>;
 
 	qcom,nonremovable;
 	status = "ok";
