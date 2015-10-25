@@ -1886,18 +1886,6 @@ static __inline tANI_U32 defHddRateToDefCfgRate( tANI_U32 defRateIndex )
 #define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MIN        (0)
 #define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MAX        (1)
 #define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_DEFAULT    (0)
-
-
-/* if gEnableTDLSScan
- * 0: Same as gEnableTDLSScanCoexistence ; driver will do disconnect if
- * Peer is not buffer STA capable.
- * 1: Dut will scan in all cases.
- * 2: If peer is not buffer STA capable, use CTS2self to do scan.
-*/
-#define CFG_TDLS_SCAN_ENABLE            "gEnableTDLSScan"
-#define CFG_TDLS_SCAN_ENABLE_MIN        (0)
-#define CFG_TDLS_SCAN_ENABLE_MAX        (2)
-#define CFG_TDLS_SCAN_ENABLE_DEFAULT    (0)
 #endif
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
@@ -2179,10 +2167,6 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_CTS2S_DURING_BTC_SCO_MIN            WNI_CFG_BTC_CTS2S_DURING_SCO_STAMIN
 #define CFG_CTS2S_DURING_BTC_SCO_MAX            WNI_CFG_BTC_CTS2S_DURING_SCO_STAMAX
 
-#define CFG_BTC_FAST_WLAN_CONN_PREF             "gBtcFastWlanConnPref"
-#define CFG_BTC_FAST_WLAN_CONN_PREF_DEFAULT     ( 1 )
-#define CFG_BTC_FAST_WLAN_CONN_PREF_MIN         ( 0 )
-#define CFG_BTC_FAST_WLAN_CONN_PREF_MAX         ( 1 )
 
 /*
  * Connection related log Enable/Disable.
@@ -2399,11 +2383,6 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_BURST_MODE_BE_TXOP_VALUE_MIN       ( 0 )
 #define CFG_BURST_MODE_BE_TXOP_VALUE_MAX       ( 12288 )
 #define CFG_BURST_MODE_BE_TXOP_VALUE_DEFAULT   ( 0 )
-
-#define CFG_BTC_ENABLE_IND_TIMER_VALUE          "gBtcEnableIndTimerVal"
-#define CFG_BTC_ENABLE_IND_TIMER_VALUE_MIN     ( 5 )
-#define CFG_BTC_ENABLE_IND_TIMER_VALUE_MAX     ( 60 )
-#define CFG_BTC_ENABLE_IND_TIMER_VALUE_DEFAULT ( 60 )
 
 /*--------------------------------------------------------------------------- 
   Type declarations
@@ -2776,7 +2755,6 @@ typedef struct
    v_U32_t                     fEnableTDLSOffChannel;
    v_U32_t                     fEnableTDLSWmmMode;
    v_BOOL_t                    fEnableTDLSScanCoexSupport;
-   v_BOOL_t                    fEnableTDLSScan;
 #endif
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
    v_BOOL_t                    fEnableLLStats;
@@ -2842,7 +2820,7 @@ typedef struct
 #endif
    char                        overrideCountryCode[4];
    v_U32_t                     gAsdProbeInterval;
-   v_U32_t                     gAsdTriggerThreshold;
+   v_S7_t                      gAsdTriggerThreshold;
    v_U32_t                     gAsdRTTRssiHystThreshold;
    v_BOOL_t                    debugP2pRemainOnChannel;
    v_U32_t                     cfgBtcCTS2SduringSCO;
@@ -2894,8 +2872,6 @@ typedef struct
    v_U8_t                      acsScanBandPreference;
    v_U16_t                     acsBandSwitchThreshold;
    v_U32_t                     enableDynamicRAStartRate;
-   v_U8_t                      btcEnableIndTimerVal;
-   v_BOOL_t                    btcFastWlanConnPref;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

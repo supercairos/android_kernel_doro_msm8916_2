@@ -1373,13 +1373,6 @@ void hdd_suspend_wlan(void)
       return;
    }
 
-   if (pHddCtx->hdd_wlan_suspended)
-   {
-      hddLog(VOS_TRACE_LEVEL_ERROR,
-             "%s: Ignore suspend wlan, Already suspended!", __func__);
-      return;
-   }
-
    pHddCtx->hdd_wlan_suspended = TRUE;
    hdd_set_pwrparams(pHddCtx);
    status =  hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
@@ -1670,13 +1663,6 @@ void hdd_resume_wlan(void)
    {
       hddLog(VOS_TRACE_LEVEL_INFO,
              "%s: Ignore resume wlan, LOGP in progress!", __func__);
-      return;
-   }
-
-   if (!pHddCtx->hdd_wlan_suspended)
-   {
-      hddLog(VOS_TRACE_LEVEL_ERROR,
-             "%s: Ignore resume wlan, Already resumed!", __func__);
       return;
    }
 
@@ -2240,6 +2226,8 @@ err_vosclose:
        /* If we hit this, it means wlan driver is in bad state and needs
        * driver unload and load.
        */
+       if (pHddCtx)
+           pHddCtx->isLogpInProgress = FALSE;
        vos_set_reinit_in_progress(VOS_MODULE_ID_VOSS, FALSE);
        return VOS_STATUS_E_FAILURE;
    }

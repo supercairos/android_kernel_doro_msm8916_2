@@ -115,7 +115,6 @@ typedef struct _smeConfigParams
     tANI_U8  isAmsduSupportInAMPDU;
     tANI_U32       fEnableDebugLog;
     tANI_U32      fDeferIMPSTime;
-    tANI_U8       fBtcEnableIndTimerVal;
 } tSmeConfigParams, *tpSmeConfigParams;
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
@@ -3478,31 +3477,17 @@ tANI_U32 sme_GetChannelBondingMode24G(tHalHandle hHal);
 
 void sme_disable_dfs_channel(tHalHandle hHal, bool disable_dfs);
 
-/* ---------------------------------------------------------------------------
-     \fn sme_RegisterBtCoexTDLSCallback
-     \brief  Used to plug in callback function
-            Which notify btcoex on or off.
-            Notification come from FW.
-     \param  hHal
-     \param  pCallbackfn : callback function pointer should be plugged in
-     \- return eHalStatus
-    -------------------------------------------------------------------------*/
-eHalStatus sme_RegisterBtCoexTDLSCallback
-(
-    tHalHandle hHal,
-    void (*pCallbackfn)(void *pAdapter, int)
-);
+/* HDD Callback function */
+typedef void(*pEncryptMsgRSPCb)(void *pUserData, void *infoParam);
 
-/* ---------------------------------------------------------------------------
-    \fn smeNeighborRoamIsHandoffInProgress
+eHalStatus sme_Encryptmsgsend (tHalHandle hHal,
+                               u8 *pCmd,
+                               int length,
+                               pEncryptMsgRSPCb encCB);
 
-    \brief This function is a wrapper to call csrNeighborRoamIsHandoffInProgress
 
-    \param hHal - The handle returned by macOpen.
-
-    \return eANI_BOOLEAN_TRUE if reassoc in progress,
-            eANI_BOOLEAN_FALSE otherwise
----------------------------------------------------------------------------*/
-tANI_BOOLEAN smeNeighborRoamIsHandoffInProgress(tHalHandle hHal);
+eHalStatus sme_SetMiracastVendorConfig(tHalHandle hHal,
+                               tANI_U32 iniNumBuffAdvert,
+                                      tANI_U32 set_value);
 
 #endif //#if !defined( __SME_API_H )

@@ -171,7 +171,17 @@ safeChannelType safeChannels[NUM_20MHZ_RF_CHANNELS] =
   --------------------------------------------------------------------------*/
 int hdd_hostapd_open (struct net_device *dev)
 {
+   hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
+
    ENTER();
+
+   if(!test_bit(SOFTAP_BSS_STARTED, &pAdapter->event_flags))
+   {
+       //WMM_INIT OR BSS_START not completed
+       hddLog( LOGW, "Ignore hostadp open request");
+       EXIT();
+       return 0;
+   }
 
    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                     TRACE_CODE_HDD_HOSTAPD_OPEN_REQUEST, NO_SESSION, 0));
@@ -609,21 +619,29 @@ void hdd_clear_all_sta(hdd_adapter_t *pHostapdAdapter, v_PVOID_t usrDataForCallb
 {
     v_U8_t staId = 0;
     struct net_device *dev;
-    dev = (struct net_device *)usrDataForCallback;
+    v_CONTEXT_t pVosContext = ( WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
+    ptSapContext pSapCtx = NULL;
 
+    dev = (struct net_device *)usrDataForCallback;
+    pSapCtx = VOS_GET_SAP_CB(pVosContext);
+    if(pSapCtx == NULL){
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                FL("psapCtx is NULL"));
+        return;
+    }
     hddLog(LOGE, FL("Clearing all the STA entry...."));
     for (staId = 0; staId < WLAN_MAX_STA_COUNT; staId++)
     {
-        if ( pHostapdAdapter->aStaInfo[staId].isUsed && 
+        if ( pSapCtx->aStaInfo[staId].isUsed &&
            ( staId != (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->uBCStaId))
         {
             //Disconnect all the stations
-            hdd_softap_sta_disassoc(pHostapdAdapter, &pHostapdAdapter->aStaInfo[staId].macAddrSTA.bytes[0]);
+            hdd_softap_sta_disassoc(pHostapdAdapter, &pSapCtx->aStaInfo[staId].macAddrSTA.bytes[0]);
         }
     }
 }
 
-static int hdd_stop_bss_link(hdd_adapter_t *pHostapdAdapter,v_PVOID_t usrDataForCallback)
+static int hdd_stop_p2p_link(hdd_adapter_t *pHostapdAdapter,v_PVOID_t usrDataForCallback)
 {
     struct net_device *dev;
     hdd_context_t     *pHddCtx = NULL;
@@ -643,7 +661,7 @@ static int hdd_stop_bss_link(hdd_adapter_t *pHostapdAdapter,v_PVOID_t usrDataFor
     {
         if ( VOS_STATUS_SUCCESS == (status = WLANSAP_StopBss((WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext) ) )
         {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, FL("Deleting SAP/P2P link!!!!!!"));
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, FL("Deleting P2P link!!!!!!"));
         }
         clear_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags);
         wlan_hdd_decr_active_session(pHddCtx, pHostapdAdapter->device_mode);
@@ -676,6 +694,8 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
     hdd_context_t *pHddCtx;
     hdd_scaninfo_t *pScanInfo  = NULL;
     struct iw_michaelmicfailure msg;
+    v_CONTEXT_t pVosContext = NULL;
+    ptSapContext pSapCtx = NULL;
 
     dev = (struct net_device *)usrDataForCallback;
     pHostapdAdapter = netdev_priv(dev);
@@ -687,7 +707,13 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                 "invalid adapter or adapter has invalid magic");
         return eHAL_STATUS_FAILURE;
     }
-
+    pVosContext = ( WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
+    pSapCtx = VOS_GET_SAP_CB(pVosContext);
+    if(pSapCtx == NULL){
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                 FL("psapCtx is NULL"));
+        return eHAL_STATUS_FAILURE;
+    }
     pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(pHostapdAdapter); 
     pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter);
     sapEvent = pSapEvent->sapHddEventCode;
@@ -716,10 +742,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                 //@@@ need wep logic here to set privacy bit
                 vos_status = hdd_softap_Register_BC_STA(pHostapdAdapter, pHddApCtx->uPrivacy);
                 if (!VOS_IS_STATUS_SUCCESS(vos_status))
-                {
                     hddLog(LOGW, FL("Failed to register BC STA %d"), vos_status);
-                    hdd_stop_bss_link(pHostapdAdapter, usrDataForCallback);
-                }
             }
             
             if (0 != (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->nAPAutoShutOff)
@@ -937,17 +960,17 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
 
             if (0 != (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->nAPAutoShutOff)
             {
-                spin_lock_bh( &pHostapdAdapter->staInfo_lock );
+                spin_lock_bh( &pSapCtx->staInfo_lock );
                 // Start AP inactivity timer if no stations associated with it
                 for (i = 0; i < WLAN_MAX_STA_COUNT; i++)
                 {
-                    if (pHostapdAdapter->aStaInfo[i].isUsed && i != (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->uBCStaId)
+                    if (pSapCtx->aStaInfo[i].isUsed && i != (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->uBCStaId)
                     {
                         bApActive = TRUE;
                         break;
                     }
                 }
-                spin_unlock_bh( &pHostapdAdapter->staInfo_lock );
+                spin_unlock_bh( &pSapCtx->staInfo_lock );
 
                 if (bApActive == FALSE)
                 {
@@ -1066,10 +1089,10 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             return VOS_STATUS_SUCCESS;
 
         case eSAP_MAC_TRIG_STOP_BSS_EVENT :
-            vos_status = hdd_stop_bss_link(pHostapdAdapter, usrDataForCallback);
+            vos_status = hdd_stop_p2p_link(pHostapdAdapter, usrDataForCallback);
             if (!VOS_IS_STATUS_SUCCESS(vos_status))
             {
-                hddLog(LOGW, FL("hdd_stop_bss_link failed %d"), vos_status);
+                hddLog(LOGW, FL("hdd_stop_p2p_link failed %d"), vos_status);
             }
             return VOS_STATUS_SUCCESS;
 
@@ -1542,7 +1565,6 @@ static __iw_softap_setparam(struct net_device *dev,
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     tHalHandle hHal;
-    hdd_context_t *pHddCtx = NULL;
     int *value = (int *)extra;
     int sub_cmd = value[0];
     int set_value = value[1];
@@ -1550,20 +1572,11 @@ static __iw_softap_setparam(struct net_device *dev,
     int ret = 0; /* success */
     v_CONTEXT_t pVosContext;
 
-    if (NULL == pHostapdAdapter)
+    if (!pHostapdAdapter || !pHostapdAdapter->pHddCtx)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: hostapd Adapter is null",
+                  "%s: either hostapd Adapter is null or HDD ctx is null",
                   __func__);
-        return -1;
-    }
-
-    pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
-    ret = wlan_hdd_validate_context(pHddCtx);
-    if (0 != ret)
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR,
-               "%s: HDD context is not valid (%d)", __func__, ret);
         return -1;
     }
 
@@ -2132,14 +2145,15 @@ static __iw_softap_getassoc_stamacaddr(struct net_device *dev,
                                      union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
-    hdd_station_info_t *pStaInfo = pHostapdAdapter->aStaInfo;
+    hdd_station_info_t *pStaInfo = NULL;
     char *buf;
     int cnt = 0;
     int left;
     int ret = 0;
     /* maclist_index must be u32 to match userspace */
     u32 maclist_index;
-
+    v_CONTEXT_t pVosContext = NULL;
+    ptSapContext pSapCtx = NULL;
     /*
      * NOTE WELL: this is a "get" ioctl but it uses an even ioctl
      * number, and even numbered iocts are supposed to have "set"
@@ -2167,12 +2181,19 @@ static __iw_softap_getassoc_stamacaddr(struct net_device *dev,
         hddLog(LOG1, "%s: failed to allocate response buffer", __func__);
         return -ENOMEM;
     }
-
+    pVosContext = ( WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
+    pSapCtx = VOS_GET_SAP_CB(pVosContext);
+    if(pSapCtx == NULL){
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                  FL("psapCtx is NULL"));
+        return  -EFAULT;
+    }
+    pStaInfo = pSapCtx->aStaInfo;
     /* start indexing beyond where the record count will be written */
     maclist_index = sizeof(maclist_index);
     left = wrqu->data.length - maclist_index;
 
-    spin_lock_bh(&pHostapdAdapter->staInfo_lock);
+    spin_lock_bh(&pSapCtx->staInfo_lock);
     while ((cnt < WLAN_MAX_STA_COUNT) && (left >= VOS_MAC_ADDR_SIZE)) {
         if ((pStaInfo[cnt].isUsed) &&
             (!IS_BROADCAST_MAC(pStaInfo[cnt].macAddrSTA.bytes))) {
@@ -2183,7 +2204,7 @@ static __iw_softap_getassoc_stamacaddr(struct net_device *dev,
         }
         cnt++;
     }
-    spin_unlock_bh(&pHostapdAdapter->staInfo_lock);
+    spin_unlock_bh(&pSapCtx->staInfo_lock);
 
     *((u32 *)buf) = maclist_index;
     wrqu->data.length = maclist_index;
@@ -3441,22 +3462,31 @@ VOS_STATUS hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int bu
     int len = 0;
     const char sta_info_header[] = "staId staAddress\n";
 
+    v_CONTEXT_t pVosContext = ( WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
+    ptSapContext pSapCtx = NULL;
+    pSapCtx = VOS_GET_SAP_CB(pVosContext);
+    if(pSapCtx == NULL){
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                 FL("psapCtx is NULL"));
+        return VOS_STATUS_E_FAULT;
+    }
+
     len = scnprintf(pBuf, buf_len, sta_info_header);
     pBuf += len;
     buf_len -= len;
 
     for (i = 0; i < WLAN_MAX_STA_COUNT; i++)
     {
-        if(pAdapter->aStaInfo[i].isUsed)
+        if(pSapCtx->aStaInfo[i].isUsed)
         {
             len = scnprintf(pBuf, buf_len, "%5d .%02x:%02x:%02x:%02x:%02x:%02x\n",
-                                       pAdapter->aStaInfo[i].ucSTAId,
-                                       pAdapter->aStaInfo[i].macAddrSTA.bytes[0],
-                                       pAdapter->aStaInfo[i].macAddrSTA.bytes[1],
-                                       pAdapter->aStaInfo[i].macAddrSTA.bytes[2],
-                                       pAdapter->aStaInfo[i].macAddrSTA.bytes[3],
-                                       pAdapter->aStaInfo[i].macAddrSTA.bytes[4],
-                                       pAdapter->aStaInfo[i].macAddrSTA.bytes[5]);
+                                       pSapCtx->aStaInfo[i].ucSTAId,
+                                       pSapCtx->aStaInfo[i].macAddrSTA.bytes[0],
+                                       pSapCtx->aStaInfo[i].macAddrSTA.bytes[1],
+                                       pSapCtx->aStaInfo[i].macAddrSTA.bytes[2],
+                                       pSapCtx->aStaInfo[i].macAddrSTA.bytes[3],
+                                       pSapCtx->aStaInfo[i].macAddrSTA.bytes[4],
+                                       pSapCtx->aStaInfo[i].macAddrSTA.bytes[5]);
             pBuf += len;
             buf_len -= len;
         }
