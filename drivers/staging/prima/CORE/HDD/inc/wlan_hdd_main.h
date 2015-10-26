@@ -209,7 +209,7 @@
 #define HDD_PNO_SCAN_TIMERS_SET_ONE      1
 /* value should not be greater than PNO_MAX_SCAN_TIMERS */
 #define HDD_PNO_SCAN_TIMERS_SET_MULTIPLE 6
-#define WLAN_WAIT_TIME_PNO  2000
+#define WLAN_WAIT_TIME_PNO  500
 #endif
 
 #define MAX_USER_COMMAND_SIZE 4096
@@ -688,6 +688,39 @@ typedef struct hdd_hostapd_state_s
 /*
  * Per station structure kept in HDD for multiple station support for SoftAP
 */
+typedef struct {
+    /** The station entry is used or not  */
+    v_BOOL_t isUsed;
+
+    /** Station ID reported back from HAL (through SAP). Broadcast
+     *  uses station ID zero by default in both libra and volans. */
+    v_U8_t ucSTAId;
+
+    /** MAC address of the station */
+    v_MACADDR_t macAddrSTA;
+
+    /** Current Station state so HDD knows how to deal with packet
+     *  queue. Most recent states used to change TL STA state. */
+    WLANTL_STAStateType tlSTAState;
+
+   /** Transmit queues for each AC (VO,VI,BE etc). */
+   hdd_list_t wmm_tx_queue[NUM_TX_QUEUES];
+
+   /** Might need to differentiate queue depth in contention case */
+   v_U16_t aTxQueueDepth[NUM_TX_QUEUES];
+   
+   /**Track whether OS TX queue has been disabled.*/
+   v_BOOL_t txSuspended[NUM_TX_QUEUES];
+
+   /**Track whether 3/4th of resources are used */
+   v_BOOL_t vosLowResource;
+
+   /** Track QoS status of station */
+   v_BOOL_t isQosEnabled;
+
+   /** The station entry for which Deauth is in progress  */
+   v_BOOL_t isDeauthInProgress;
+} hdd_station_info_t;
 
 struct hdd_ap_ctx_s
 {
@@ -951,6 +984,8 @@ struct hdd_adapter_s
  */
     /** Multiple station supports */
    /** Per-station structure */
+   spinlock_t staInfo_lock; //To protect access to station Info  
+   hdd_station_info_t aStaInfo[WLAN_MAX_STA_COUNT];
    //v_U8_t uNumActiveStation;
 
    v_U16_t aTxQueueLimit[NUM_TX_QUEUES];
@@ -1034,6 +1069,8 @@ struct hdd_adapter_s
    sme_QosWmmUpType hddWmmDscpToUpMap[WLAN_HDD_MAX_DSCP+1];
    /* Lock for active sessions while processing deauth/Disassoc */
    spinlock_t lock_for_active_session;
+   /* Time stamp for start RoC request */
+   v_TIME_t startRocTs;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
@@ -1247,6 +1284,7 @@ struct hdd_context_s
     tdls_scan_context_t tdls_scan_ctxt;
     /* Lock to avoid race condition during TDLS operations*/
     struct mutex tdls_lock;
+    v_BOOL_t is_tdls_btc_enabled;
 #endif
 
     hdd_traffic_monitor_t traffic_monitor;
@@ -1406,7 +1444,7 @@ int wlan_hdd_validate_context(hdd_context_t *pHddCtx);
 v_BOOL_t hdd_is_valid_mac_address(const tANI_U8* pMacAddr);
 VOS_STATUS hdd_issta_p2p_clientconnected(hdd_context_t *pHddCtx);
 void hdd_ipv4_notifier_work_queue(struct work_struct *work);
-v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx, v_BOOL_t isRoC );
+v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx);
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 int wlan_hdd_setIPv6Filter(hdd_context_t *pHddCtx, tANI_U8 filterType, tANI_U8 sessionId);
 #endif
@@ -1471,4 +1509,5 @@ VOS_STATUS wlan_hdd_init_channels_for_cc(hdd_context_t *pHddCtx,  driver_load_ty
 
 VOS_STATUS wlan_hdd_cancel_remain_on_channel(hdd_context_t *pHddCtx);
 
+void hdd_nullify_netdev_ops(hdd_context_t *pHddCtx);
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

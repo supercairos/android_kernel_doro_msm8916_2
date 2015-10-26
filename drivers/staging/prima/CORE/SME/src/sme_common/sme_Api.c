@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -76,7 +76,6 @@
 #include "sapApi.h"
 #include "macTrace.h"
 
-
 #ifdef DEBUG_ROAM_DELAY
 #include "vos_utils.h"
 #endif
@@ -96,6 +95,7 @@ extern eHalStatus pmcPrepareCommand( tpAniSirGlobal pMac, eSmeCommandType cmdTyp
                             tANI_U32 size, tSmeCmd **ppCmd );
 extern void pmcReleaseCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand );
 extern void qosReleaseCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand );
+extern void csrReleaseRocReqCommand( tpAniSirGlobal pMac);
 extern eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemainonChn);
 extern eHalStatus sme_remainOnChnRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg);
 extern eHalStatus sme_mgmtFrmInd( tHalHandle hHal, tpSirSmeMgmtFrameInd pSmeMgmtFrm);
@@ -458,19 +458,17 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
         csrLLUnlock(&pMac->roam.roamCmdPendingList);
     }
 
-    if( pRetCmd )
-    {
-         vos_mem_set((tANI_U8 *)&pRetCmd->command, sizeof(pRetCmd->command), 0);
-         vos_mem_set((tANI_U8 *)&pRetCmd->sessionId, sizeof(pRetCmd->sessionId), 0);
-         vos_mem_set((tANI_U8 *)&pRetCmd->u, sizeof(pRetCmd->u), 0);
-    }
-
     return( pRetCmd );
 }
 
 
 void smePushCommand( tpAniSirGlobal pMac, tSmeCmd *pCmd, tANI_BOOLEAN fHighPriority )
 {
+    if (!SME_IS_START(pMac))
+    {
+       smsLog( pMac, LOGE, FL("Sme in stop state"));
+       return;
+    }
     if ( fHighPriority )
     {
         csrLLInsertHead( &pMac->sme.smeCmdPendingList, &pCmd->Link, LL_ACCESS_LOCK );
@@ -696,30 +694,6 @@ tANI_BOOLEAN smeProcessScanQueue(tpAniSirGlobal pMac)
 end:
     csrLLUnlock(&pMac->sme.smeScanCmdActiveList);
     return status;
-}
-
-eHalStatus smeProcessPnoCommand(tpAniSirGlobal pMac, tSmeCmd *pCmd)
-{
-    tpSirPNOScanReq pnoReqBuf;
-    tSirMsgQ msgQ;
-
-    pnoReqBuf = vos_mem_malloc(sizeof(tSirPNOScanReq));
-    if ( NULL == pnoReqBuf )
-    {
-        smsLog(pMac, LOGE, FL("failed to allocate memory"));
-        return eHAL_STATUS_FAILURE;
-    }
-
-    vos_mem_copy(pnoReqBuf, &(pCmd->u.pnoInfo), sizeof(tSirPNOScanReq));
-
-    smsLog(pMac, LOG1, FL("post WDA_SET_PNO_REQ comamnd"));
-    msgQ.type = WDA_SET_PNO_REQ;
-    msgQ.reserved = 0;
-    msgQ.bodyptr = pnoReqBuf;
-    msgQ.bodyval = 0;
-    wdaPostCtrlMsg( pMac, &msgQ);
-
-    return eHAL_STATUS_SUCCESS;
 }
 
 tANI_BOOLEAN smeProcessCommand( tpAniSirGlobal pMac )
@@ -1021,22 +995,7 @@ sme_process_cmd:
                                 }
                             }
                             break;
-                        case eSmeCommandPnoReq:
-                            csrLLUnlock( &pMac->sme.smeCmdActiveList );
-                            status = smeProcessPnoCommand(pMac, pCommand);
-                            if (!HAL_STATUS_SUCCESS(status)){
-                                smsLog(pMac, LOGE,
-                                  FL("failed to post SME PNO SCAN %d"), status);
-                            }
-                            //We need to re-run the command
-                            fContinue = eANI_BOOLEAN_TRUE;
 
-                            if (csrLLRemoveEntry(&pMac->sme.smeCmdActiveList,
-                                              &pCommand->Link, LL_ACCESS_LOCK))
-                            {
-                                csrReleaseCommand(pMac, pCommand);
-                            }
-                            break;
                         case eSmeCommandAddTs:
                         case eSmeCommandDelTs:
                             csrLLUnlock( &pMac->sme.smeCmdActiveList );
@@ -1502,6 +1461,7 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
          pSmeConfigParams->csrConfig.isCoalesingInIBSSAllowed;
    pMac->fEnableDebugLog = pSmeConfigParams->fEnableDebugLog;
    pMac->fDeferIMPSTime = pSmeConfigParams->fDeferIMPSTime;
+   pMac->fBtcEnableIndTimerVal = pSmeConfigParams->fBtcEnableIndTimerVal;
 
    return status;
 }
@@ -1955,28 +1915,6 @@ eHalStatus sme_getBcnMissRate(tHalHandle hHal, tANI_U8 sessionId, void *callback
     return eHAL_STATUS_FAILURE;
 }
 
-eHalStatus sme_EncryptMsgResponseHandler(tHalHandle hHal,
-                                      tpSirEncryptedDataRspParams pEncRspParams)
-{
-   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-
-   if (NULL == pMac)
-   {
-       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL,
-           "%s: pMac is null", __func__);
-       return eHAL_STATUS_FAILURE;
-   }
-   if (pMac->sme.pEncMsgInfoParams.pEncMsgCbk == NULL)
-   {
-       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-           "%s: HDD callback is null", __func__);
-       return eHAL_STATUS_FAILURE;
-   }
-   pMac->sme.pEncMsgInfoParams.pEncMsgCbk(pMac->sme.pEncMsgInfoParams.pUserData,
-                                        &pEncRspParams->encryptedDataRsp);
-   return eHAL_STATUS_SUCCESS;
-}
-
 /*--------------------------------------------------------------------------
 
   \brief sme_ProcessMsg() - The main message processor for SME.
@@ -2390,21 +2328,6 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                 break;
 #endif /* FEATURE_WLAN_CH_AVOID */
 
-          case eWNI_SME_ENCRYPT_MSG_RSP:
-              if (pMsg->bodyptr)
-              {
-                  sme_EncryptMsgResponseHandler(pMac, pMsg->bodyptr);
-                  vos_mem_free(pMsg->bodyptr);
-              }
-              else
-              {
-                  smsLog(pMac, LOGE,
-                         "Empty rsp message for (eWNI_SME_ENCRYPT_MSG_RSP),"
-                         " nothing to process");
-              }
-              break ;
-
-
           default:
 
              if ( ( pMsg->type >= eWNI_SME_MSG_TYPES_BEGIN )
@@ -2745,7 +2668,6 @@ eHalStatus sme_ScanRequest(tHalHandle hHal, tANI_U8 sessionId, tCsrScanRequest *
         {
             smsLog(pMac, LOGE, FL("fScanEnable %d isCoexScoIndSet: %d "),
                      pMac->scan.fScanEnable, pMac->isCoexScoIndSet);
-            status = eHAL_STATUS_RESOURCES;
         }
     } while( 0 );
 
@@ -11735,123 +11657,50 @@ void sme_disable_dfs_channel(tHalHandle hHal, bool disbale_dfs)
 }
 
 /* ---------------------------------------------------------------------------
-    \fn sme_Encryptmsgsend
-    \brief  SME API to issue encrypt message request
+    \fn sme_RegisterBtCoexTDLSCallback
+    \brief  Used to plug in callback function
+            Which notify btcoex on or off.
+            Notification come from FW.
     \param  hHal
-    \param  pCmd: Data to be encrypted
+    \param  pCallbackfn : callback function pointer should be plugged in
     \- return eHalStatus
     -------------------------------------------------------------------------*/
-eHalStatus sme_Encryptmsgsend (tHalHandle hHal,
-                               u8 *pCmd,
-                               int length,
-                               pEncryptMsgRSPCb encMsgCbk)
+eHalStatus sme_RegisterBtCoexTDLSCallback
+(
+   tHalHandle hHal,
+   void (*pCallbackfn)(void *pAdapter, int )
+)
 {
-    eHalStatus status    = eHAL_STATUS_SUCCESS;
-    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
-    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
-    vos_msg_t vosMessage;
-    u8 *pEncryptMsg;
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    tpAniSirGlobal      pMac      = PMAC_STRUCT(hHal);
 
-    pEncryptMsg = vos_mem_malloc(length);
-    if ( !pEncryptMsg)
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+              "%s: Plug in BtCoex TDLS CB", __func__);
+
+    status = sme_AcquireGlobalLock(&pMac->sme);
+    if (eHAL_STATUS_SUCCESS == status)
     {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-                "%s: Not able to allocate memory for "
-                "SIR_HAL_ENCRYPT_MSG_REQ",
-                __func__);
-        return eHAL_STATUS_FAILURE;
-    }
-
-    vos_mem_copy(pEncryptMsg, pCmd, length);
-
-    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
-
-        pMac->sme.pEncMsgInfoParams.pEncMsgCbk = encMsgCbk;
-        pMac->sme.pEncMsgInfoParams.pUserData = hHal;
-        /* Serialize the req through MC thread */
-        vosMessage.bodyptr = pEncryptMsg;
-        vosMessage.type    = SIR_HAL_ENCRYPT_MSG_REQ;
-        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
-        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
-           status = eHAL_STATUS_FAILURE;
-
+        if (NULL != pCallbackfn)
+        {
+           pMac->sme.pBtCoexTDLSNotification = pCallbackfn;
+        }
         sme_ReleaseGlobalLock(&pMac->sme);
     }
     return(status);
 }
 
-eHalStatus sme_SetMiracastVendorConfig(tHalHandle hHal,
-    tANI_U32 iniNumBuffAdvert , tANI_U32 set_value)
+/* ---------------------------------------------------------------------------
+
+    \fn smeNeighborRoamIsHandoffInProgress
+
+    \brief  This function is a wrapper to call csrNeighborRoamIsHandoffInProgress
+
+    \param hHal - The handle returned by macOpen.
+
+    \return eANI_BOOLEAN_TRUE if reassoc in progress, eANI_BOOLEAN_FALSE otherwise
+
+---------------------------------------------------------------------------*/
+tANI_BOOLEAN smeNeighborRoamIsHandoffInProgress(tHalHandle hHal)
 {
-    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
-    tANI_U8 mcsSet[SIZE_OF_SUPPORTED_MCS_SET];
-    tANI_U32 val = SIZE_OF_SUPPORTED_MCS_SET;
-
-    if (ccmCfgGetStr(hHal, WNI_CFG_SUPPORTED_MCS_SET, mcsSet, &val)
-                                        != eHAL_STATUS_SUCCESS)
-    {
-       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-           FL("failed to get ini param, WNI_CFG_SUPPORTED_MCS_SET"));
-       return eHAL_STATUS_FAILURE;
-    }
-
-    if (set_value)
-    {
-       if (pMac->miracastVendorConfig)
-       {
-         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-          FL(" Miracast tuning already enabled!!"));
-         return eHAL_STATUS_SUCCESS;
-       }
-
-       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-        FL("Enable Miracast tuning by disabling 64QAM rates, setting 4 blocks for aggregation and disabling probe response for broadcast probe in P2P-GO mode"));
-
-       if (ccmCfgSetInt(hHal, WNI_CFG_NUM_BUFF_ADVERT, 4,
-                  NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
-       {
-          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-            FL("Failure: Could not set WNI_CFG_NUM_BUFF_ADVERT"));
-          return eHAL_STATUS_FAILURE;
-       }
-       /* Disable 64QAM rates ie (MCS 5,6 and 7)
-        */
-       mcsSet[0]=0x1F;
-    }
-    else
-    {
-       if (!pMac->miracastVendorConfig)
-       {
-         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-          FL(" Miracast tuning already disabled!!"));
-         return eHAL_STATUS_SUCCESS;
-       }
-
-       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-        FL("Disable Miracast tuning by enabling all MCS rates, setting %d blocks for aggregation and enabling probe response for broadcast probe in P2P-GO mode"),
-       iniNumBuffAdvert);
-
-       if (ccmCfgSetInt(hHal, WNI_CFG_NUM_BUFF_ADVERT, iniNumBuffAdvert,
-                  NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
-       {
-          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-            FL("Failure: Could not set WNI_CFG_NUM_BUFF_ADVERT"));
-          return eHAL_STATUS_FAILURE;
-       }
-       /* Enable all MCS rates)
-        */
-       mcsSet[0]=0xFF;
-    }
-
-    if (ccmCfgSetStr(hHal, WNI_CFG_SUPPORTED_MCS_SET, mcsSet,
-          val, NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
-    {
-       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-         FL("Failure: Could not set WNI_CFG_SUPPORTED_MCS_SET"));
-       return eHAL_STATUS_FAILURE;
-    }
-
-    pMac->miracastVendorConfig = set_value;
-    return eHAL_STATUS_SUCCESS;
+    return (csrNeighborRoamIsHandoffInProgress(PMAC_STRUCT(hHal)));
 }
-
