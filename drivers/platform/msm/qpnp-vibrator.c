@@ -380,6 +380,8 @@ static ssize_t qpnp_vib_level_store(struct device *dev,
 }
 static DEVICE_ATTR(vtg_level, S_IRUGO | S_IWUSR, qpnp_vib_level_show, qpnp_vib_level_store);
 
+struct qpnp_vib *whole_vib;
+
 static int qpnp_vibrator_probe(struct spmi_device *spmi)
 {
 	struct qpnp_vib *vib;
