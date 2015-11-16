@@ -1044,7 +1044,4 @@ config INPUT_MT_WRAPPER
 
 	  If unsure, say N.
 
-config FTS_GESTURE
-	bool "FT5x06 double tap"
-
 endif
