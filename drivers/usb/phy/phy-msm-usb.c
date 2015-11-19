@@ -95,7 +95,7 @@ module_param(lpm_disconnect_thresh , uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(lpm_disconnect_thresh,
 	"Delay before entering LPM on USB disconnect");
 
-static bool floated_charger_enable;
+static bool floated_charger_enable = 1;
 module_param(floated_charger_enable , bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(floated_charger_enable,
 	"Whether to enable floated charger");
@@ -3209,6 +3209,7 @@ do_wait:
 	}
 }
 
+extern int cradle_get_state(void);
 static void msm_otg_sm_work(struct work_struct *w)
 {
 	struct msm_otg *motg = container_of(w, struct msm_otg, sm_work);
@@ -3292,8 +3293,12 @@ static void msm_otg_sm_work(struct work_struct *w)
 					pm_runtime_put_sync(otg->phy->dev);
 					break;
 				case USB_FLOATED_CHARGER:
-					msm_otg_notify_charger(motg,
-							IDEV_CHG_MAX);
+					if(cradle_get_state())   // no statndard charger only allow 100mA charging current
+						msm_otg_notify_charger(motg,
+								100);
+					else
+						msm_otg_notify_charger(motg,
+								IDEV_CHG_MAX);
 					otg->phy->state =
 						OTG_STATE_B_CHARGER;
 					work = 0;
