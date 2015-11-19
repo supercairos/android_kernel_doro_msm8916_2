@@ -86,3 +86,6 @@ endif
 ifeq ($(CONFIG_BOSCH_BMA2X2_ENABLE_INT2),y)
 	EXTRA_CFLAGS += -DBMA2X2_ENABLE_INT2
 endif
+obj-$(CONFIG_SENSORS_LTR559)    += ltr559.o
+obj-$(CONFIG_SENSORS_HALL)	   += hall_sensor.o
+
