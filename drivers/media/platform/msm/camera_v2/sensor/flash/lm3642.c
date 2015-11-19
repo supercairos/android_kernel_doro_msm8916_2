@@ -14,6 +14,8 @@
 #include <linux/export.h>
 #include "msm_camera_io_util.h"
 #include "msm_led_flash.h"
+#include <linux/reboot.h>
+#include <linux/notifier.h>
 
 #define FLASH_NAME "ti,lm3642"
 
@@ -26,6 +28,7 @@
 
 
 static struct msm_led_flash_ctrl_t fctrl;
+static struct msm_led_flash_ctrl_t *lm3642_ctrl;
 static struct i2c_driver lm3642_i2c_driver;
 
 static struct msm_camera_i2c_reg_array lm3642_init_array[] = {
@@ -100,7 +103,7 @@ int msm_flash_lm3642_led_init(struct msm_led_flash_ctrl_t *fctrl)
 	struct msm_camera_sensor_board_info *flashdata = NULL;
 	struct msm_camera_power_ctrl_t *power_info = NULL;
 	LM3642_DBG("%s:%d called\n", __func__, __LINE__);
-
+	lm3642_ctrl = fctrl;
 	flashdata = fctrl->flashdata;
 	power_info = &flashdata->power_info;
 
@@ -309,9 +312,22 @@ static struct i2c_driver lm3642_i2c_driver = {
 	},
 };
 
+static int flash_reboot_sys(struct notifier_block *this,
+			     unsigned long code, void *unused)
+{
+	if (lm3642_ctrl != NULL) {
+	msm_flash_lm3642_led_release(lm3642_ctrl);
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block lm3642_notifier = {
+	.notifier_call = flash_reboot_sys,
+};
 static int __init msm_flash_lm3642_init(void)
 {
 	LM3642_DBG("%s entry\n", __func__);
+	register_reboot_notifier(&lm3642_notifier);
 	return i2c_add_driver(&lm3642_i2c_driver);
 }
 
