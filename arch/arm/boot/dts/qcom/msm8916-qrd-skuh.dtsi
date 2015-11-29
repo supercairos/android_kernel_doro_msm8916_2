@@ -156,28 +156,6 @@
 		avago,ga-value = <313>;
 	};
 
-#if 0
-	st@18 {
-		compatible = "st,lis3dh";
-		reg = <0x18>;
-		pinctrl-names = "lis3dh_default","lis3dh_sleep";
-		pinctrl-0 = <&lis3dh_int1_default>;
-		pinctrl-1 = <&lis3dh_int1_sleep>;
-		interrupt-parent = <&msm_gpio>;
-		vdd-supply = <&pm8916_l17>;
-		vddio-supply = <&pm8916_l6>;
-		st,min-interval = <5>;
-		st,init-interval = <200>;
-		st,axis-map-x = <0>;
-		st,axis-map-y = <1>;
-		st,axis-map-z = <2>;
-		st,g-range = <2>;
-		st,gpio-int1 = <&msm_gpio 115 0x2002>;
-		st,negate-x;
-		st,negate-y;
-	};
-#endif
-
 	bosch@18 { /* Accelerometer sensor */
 		compatible = "bosch,bma2x2";
 		reg = <0x18>;
@@ -257,42 +235,14 @@
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active>;
 	pinctrl-1 = <&mdss_dsi_suspend>;
-
-	/*
-	vsp-supply = <&tps65132_pos>;
-	vsn-supply = <&tps65132_neg>;
-	qcom,panel-supply-entries {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		qcom,panel-supply-entry@2 {
-			reg = <2>;
-			qcom,supply-name = "vsp";
-			qcom,supply-min-voltage = <5400000>;
-			qcom,supply-max-voltage = <5400000>;
-			qcom,supply-enable-load = <200>;
-			qcom,supply-disable-load = <0>;
-		};
-
-		qcom,panel-supply-entry@3 {
-			reg = <3>;
-			qcom,supply-name = "vsn";
-			qcom,supply-min-voltage = <5400000>;
-			qcom,supply-max-voltage = <5400000>;
-			qcom,supply-enable-load = <40>;
-			qcom,supply-disable-load = <0>;
-		};
-	};*/
 };
 
 &dsi_hx8394d_720_vid {
 	qcom,cont-splash-enabled;
-	//qcom,esd-check-enabled;
 };
 
 &dsi_yt50f_720_vid {
 	qcom,cont-splash-enabled;
-	//qcom,esd-check-enabled;
 };
 &soc {
 	spi_0 {
@@ -307,34 +257,9 @@
 		status = "okay";
 		pinctrl-names = "default";
 		pinctrl-0 = <&gpio_led_off>;
-/*
-   //delete by duan.mengmeng@byd.com to fix HERO-149.
-		red {
-			gpios = <&msm_gpio 8 0>;
-			label = "red";
-			linux,default-trigger = "none";
-			default-state = "off";
-			retain-state-suspended;
-		};
-
-		green {
-			gpios = <&msm_gpio 9 0>;
-			label = "green";
-			linux,default-trigger = "none";
-			default-state = "off";
-			retain-state-suspended;
-		};
-
-		blue {
-			gpios = <&msm_gpio 10 0>;
-			label = "blue";
-			linux,default-trigger = "none";
-			default-state = "off";
-		};
-*/
 		key_led {
 			gpios = <&msm_gpio 119 0>;
-			label = "key_led";
+			label = "button-backlight";
 			linux,default-trigger = "none";
 			default-state = "off";
 		};
@@ -434,7 +359,6 @@
 		qcom,y-offset = <0>;
 	};
 
-	//pjn add hall_sensor 20150102
 	hall_sensor {
 		compatible = "qcom,hall";
 		input-name = "hall_sensor";
@@ -450,7 +374,6 @@
 		hall,inactive_code = <149>;
 		hall,debounce-interval = <20>;
 	};
-	//end
 };
 
 &pm8916_vadc {
