@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -44,7 +44,7 @@
 #include "wlan_qct_pal_packet.h"
 #include "wlan_qct_wda.h"
 
-#include "wniCfgSta.h"
+#include "wniCfg.h"
 #include "cfgApi.h"
 #include "sirCommon.h"
 #include "utilsApi.h"
@@ -150,7 +150,8 @@ defMsgDecision(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #ifdef FEATURE_OEM_DATA_SUPPORT
         (limMsg->type != WDA_START_OEM_DATA_RSP) &&
 #endif
-        (limMsg->type != WDA_ADD_TS_RSP))
+        (limMsg->type != WDA_ADD_TS_RSP) &&
+        (limMsg->type != WDA_LOST_LINK_PARAMS_IND))
     {
         PELOG1(limLog(pMac, LOG1, FL("Defer the current message %s , gLimProcessDefdMsgs is false and system is not in scan/learn mode"),
                limMsgStr(limMsg->type));)
@@ -1245,7 +1246,6 @@ static tANI_BOOLEAN limAgeOutProbeReq( tpAniSirGlobal pMac, tpSirMsgQ  limMsg,
     return match;
 }
 
-
 /**
  * limProcessMessages
  *
@@ -1370,9 +1370,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #ifdef WLAN_DEBUG                
             pMac->lim.numBbt++;
 #endif
-            vos_spin_lock_acquire( &pMac->sys.lock );
-            pMac->sys.gSysBbtPendingMgmtCount--;
-            vos_spin_lock_release( &pMac->sys.lock );
             {
                 v_U16_t     pktLen = 0;
                 vos_pkt_t  *pVosPkt;
@@ -1397,6 +1394,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 
                 if( !VOS_IS_STATUS_SUCCESS(vosStatus) )
                 {
+                    limDecrementPendingMgmtCount(pMac);
                     vos_pkt_return_packet(pVosPkt);
                     break;
 
@@ -1410,6 +1408,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 
                 if( limAgeOutProbeReq ( pMac, &limMsgNew, pVosPkt ))
                 {
+                   limDecrementPendingMgmtCount(pMac);
                    break;
                 }
 
@@ -1444,6 +1443,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                                 pMac->lim.gLimSystemRole,  pMac->lim.gLimMlmState,  pMac->lim.gLimPrevMlmState);)
                             limLogSessionStates(pMac);
                             limPrintMsgName(pMac, LOGE, limMsg->type);
+                            limDecrementPendingMgmtCount(pMac);
                             vos_pkt_return_packet(pVosPkt);
                         }
                 }
@@ -1453,6 +1453,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                      * Asumption here is when Rx mgmt frame processing is done,
                      * voss packet could be freed here.
                      */
+                    limDecrementPendingMgmtCount(pMac);
                     vos_pkt_return_packet(pVosPkt);
                 }
             }
@@ -1756,7 +1757,11 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
            limMsg->bodyptr = NULL;
            break;
     
-
+        case WDA_LOST_LINK_PARAMS_IND:
+            limProcessLostLinkParamsInd(pMac,limMsg);
+            vos_mem_free(limMsg->bodyptr);
+            limMsg->bodyptr = NULL;
+            break;
 
         case SIR_LIM_ADDTS_RSP_TIMEOUT:
             limProcessSmeReqMessages(pMac,limMsg);

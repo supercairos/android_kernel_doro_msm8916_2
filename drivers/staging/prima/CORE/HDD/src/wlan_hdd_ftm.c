@@ -89,7 +89,9 @@
 #define FTM_CHAIN_SEL_R0_ON         1
 #define FTM_CHAIN_SEL_T0_ON         2
 #define FTM_CHAIN_SEL_R0_T0_ON      3
-#define FTM_CHAIN_SEL_MAX           3
+#define FTM_CHAIN_SEL_ANTENNA_0     7
+#define FTM_CHAIN_SEL_ANTENNA_1     8
+#define FTM_CHAIN_SEL_MAX           8
 
 #define WCNSS_TXFIR_OFFSET          0x00018000
 
@@ -1215,6 +1217,14 @@ static VOS_STATUS wlan_ftm_priv_enable_chain(hdd_adapter_t *pAdapter,v_U16_t cha
         case FTM_CHAIN_SEL_T0_ON:
             chainSelect = PHY_CHAIN_SEL_T0_ON;
             break;
+
+        case FTM_CHAIN_SEL_ANTENNA_0:
+            chainSelect = PHY_CHAIN_SEL_ANT_0;
+            break;
+
+        case FTM_CHAIN_SEL_ANTENNA_1:
+            chainSelect = PHY_CHAIN_SEL_ANT_1;
+            break;
     }
 
     vos_mem_set(pMsgBuf, sizeof(tPttMsgbuffer), 0);
@@ -1567,6 +1577,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
     }
 
     pHddCtx->ftm.ftm_state = WLAN_FTM_INITIALIZED;
+    init_completion(&pHddCtx->ftm.startCmpVar);
 
     return VOS_STATUS_SUCCESS;
 
@@ -1715,6 +1726,8 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
        return VOS_STATUS_SUCCESS;
     }
 
+    pHddCtx->ftm.ftm_state = WLAN_FTM_STARTING;
+
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
             "%s: Starting Libra SW", __func__);
 
@@ -1830,6 +1843,7 @@ err_wda_stop:
 
 err_status_failure:
 
+    pHddCtx->ftm.ftm_state = WLAN_FTM_INITIALIZED;
     return VOS_STATUS_E_FAILURE;
 
 }
@@ -3226,6 +3240,7 @@ void wlan_hdd_process_ftm_cmd
     pVosContextType pVosContext = (pVosContextType)(pHddCtx->pvosContext);
     int hostState;
     tPttMsgbuffer *tempRspBuffer = NULL;
+    static int count;
 
     ENTER();
 
@@ -3261,6 +3276,19 @@ void wlan_hdd_process_ftm_cmd
         return ;
     }
 
+    if (VOS_FTM_MODE != hdd_get_conparam())
+    {
+        count++;
+        if (count == 1 || !(count % 10))
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Driver not loaded in FTM"
+                " mode, current mode: %d ",__func__, hdd_get_conparam());
+        }
+        pHddCtx->ftm.pResponseBuf->ftm_err_code = WLAN_FTM_FAILURE;
+        wlan_ftm_send_response(pHddCtx);
+        return ;
+    }
+
     switch (pRequestBuf->ftmpkt.ftm_cmd_type)
     {
     case WLAN_FTM_START:
@@ -3279,6 +3307,7 @@ void wlan_hdd_process_ftm_cmd
                    ,__func__);
             pHddCtx->ftm.pResponseBuf->ftm_err_code = WLAN_FTM_FAILURE;
             wlan_ftm_send_response(pHddCtx);
+            complete(&pHddCtx->ftm.startCmpVar);
             return;
         }
         /* Ptt application running on the host PC expects the length to be one byte less that what we have received*/
@@ -3287,7 +3316,7 @@ void wlan_hdd_process_ftm_cmd
         pHddCtx->ftm.pResponseBuf->ftmpkt.ftm_cmd_type = 0;
 
         wlan_ftm_send_response(pHddCtx);
-
+        complete(&pHddCtx->ftm.startCmpVar);
         break;
 
     case WLAN_FTM_STOP:
@@ -5031,6 +5060,13 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
     hdd_adapter_t *pAdapter;
     struct iw_point s_priv_data;
 
+    if (!capable(CAP_NET_ADMIN))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("permission check failed"));
+        return -EPERM;
+    }
+
     ret =0;
     /* helper function to get iwreq_data with compat handling. */
     if (hdd_priv_get_data(&s_priv_data, wrqu))
@@ -5534,6 +5570,13 @@ static int iw_ftm_set_var_ints_getnone(struct net_device *dev, struct iw_request
     hdd_adapter_t *pAdapter = (netdev_priv(dev));
     int sub_cmd = wrqu->data.flags;
     int *value = (int*)wrqu->data.pointer;
+
+    if (!capable(CAP_NET_ADMIN))
+    {
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+            FL("permission check failed"));
+         return -EPERM;
+    }
 
     if(wrqu->data.length != 2)
     {

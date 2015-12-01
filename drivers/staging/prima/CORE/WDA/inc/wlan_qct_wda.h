@@ -507,6 +507,15 @@ typedef struct
    v_PVOID_t            wdaWdiApiMsgParam;      /* WDI API paramter tracking */
 } tWDA_ReqParams; 
 
+typedef struct
+{
+   v_PVOID_t            pWdaContext;             /* pointer to WDA context*/
+   v_PVOID_t            wdaMsgParam;            /* PE parameter tracking */
+   v_PVOID_t            wdaWdiApiMsgParam;      /* WDI API paramter tracking */
+   v_BOOL_t             wdaHALDumpAsync;        /* Async Request */
+
+} tWDA_HalDumpReqParams;
+
 /*
  * FUNCTION: WDA_open
  * open WDA context
@@ -987,6 +996,7 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_DELBA_IND                  SIR_HAL_DELBA_IND
 #define WDA_DEL_BA_IND                 SIR_HAL_DEL_BA_IND
 #define WDA_MIC_FAILURE_IND            SIR_HAL_MIC_FAILURE_IND
+#define WDA_LOST_LINK_PARAMS_IND       SIR_HAL_LOST_LINK_PARAMS_IND
 
 //message from sme to initiate delete block ack session.
 #define WDA_DELBA_REQ                  SIR_HAL_DELBA_REQ
@@ -1222,6 +1232,9 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_SET_TDLS_CHAN_SWITCH_REQ           SIR_HAL_TDLS_CHAN_SWITCH_REQ
 #define WDA_SET_TDLS_CHAN_SWITCH_REQ_RSP       SIR_HAL_TDLS_CHAN_SWITCH_REQ_RSP
 #endif
+
+#define WDA_SET_RTS_CTS_HTVHT                   SIR_HAL_SET_RTS_CTS_HTVHT
+
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
 eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
@@ -1898,11 +1911,12 @@ WDA_DS_GetTxFlowMask
 
    IN
     pMac             MAC global pointer
-    cmd               Hal dump command
-    arg1              Dump command argument 1
-    arg2              Dump command argument 2
-    arg3              Dump command argument 3
-    arg4              Dump command argument 4
+    cmd              Hal dump command
+    arg1             Dump command argument 1
+    arg2             Dump command argument 2
+    arg3             Dump command argument 3
+    arg4             Dump command argument 4
+    async            Asynchronous event. Doesn't wait for rsp.
 
    OUT
        pBuffer          Dump command Response buffer
@@ -1916,7 +1930,7 @@ WDA_DS_GetTxFlowMask
 ============================================================================*/
 VOS_STATUS WDA_HALDumpCmdReq(tpAniSirGlobal   pMac,tANI_U32 cmd, 
                  tANI_U32   arg1, tANI_U32   arg2, tANI_U32   arg3,
-                 tANI_U32   arg4, tANI_U8   *pBuffer);
+                 tANI_U32   arg4, tANI_U8   *pBuffer, wpt_boolean async);
 
 /*==========================================================================
    FUNCTION    WDA_featureCapsExchange

@@ -489,6 +489,7 @@ typedef enum
     eCSR_ROAM_ESE_ADJ_AP_REPORT_IND,
     eCSR_ROAM_ESE_BCN_REPORT_IND,
 #endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
+    eCSR_ROAM_LOST_LINK_PARAMS_IND,
 }eRoamCmdStatus;
 
 
@@ -893,7 +894,7 @@ typedef struct tagCsrRoamProfile
      * It has the IE byte stream for additional IE,
      * which can be WSC IE and/or P2P IE
      */
-    tANI_U8  addIEScan[SIR_MAC_MAX_IE_LENGTH+2];       //Additional IE information.
+    tANI_U8  addIEScan[SIR_MAC_MAX_ADD_IE_LENGTH+2];       //Additional IE information.
     tANI_U32 nAddIEAssocLength;   //The byte count in the pAddIE for assoc
     tANI_U8 *pAddIEAssoc;       //If not null, it has the IE byte stream for additional IE, which can be WSC IE and/or P2P IE
 
@@ -1142,7 +1143,7 @@ typedef struct tagCsrConfigParam
 #endif
 #endif
 
-
+    tANI_BOOLEAN ignorePeerErpInfo;
     tANI_U8 scanCfgAgingTime;
 
     tANI_U8   enableTxLdpc;
@@ -1206,6 +1207,7 @@ typedef struct tagCsrRoamInfo
         tSirMicFailureInfo *pMICFailureInfo;
         tCsrRoamConnectedProfile *pConnectedProfile;
         tSirWPSPBCProbeReq *pWPSPBCProbeReq;
+        tSirLostLinkParamsInfo *pLostLinkParams;
     } u;
 
     tANI_BOOLEAN wmmEnabledSta;   //set to true if WMM enabled STA
