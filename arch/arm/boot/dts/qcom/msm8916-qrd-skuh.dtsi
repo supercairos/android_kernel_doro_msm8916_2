@@ -13,6 +13,7 @@
 #include "msm8916-qrd.dtsi"
 #include "dsi-panel-innolux-720p-video.dtsi"
 #include "dsi-panel-hx8394d-720p-video.dtsi"
+#include "dsi-panel-hx8394f-720p-video.dtsi"
 #include "dsi-panel-yt50f-720p-video.dtsi"
 #include "msm8916-camera-sensor-qrd.dtsi"
 
@@ -234,6 +235,8 @@
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active>;
 	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
 };
 
 &dsi_hx8394d_720_vid {

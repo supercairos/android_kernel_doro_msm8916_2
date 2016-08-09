@@ -42,7 +42,7 @@ static unsigned char CTPM_FW[]=
 #endif
 static unsigned char CTPM_FW_BYD[]=
 {
-	#include "BYD_DORO_FT5436I_Byd_0x08_20150918_app.i"
+	#include "BYD_DORO_FT5436I_Byd_0x09_20151105_app.i"
 };
 
 static unsigned char CTPM_FW_YASHI[]=

@@ -1325,6 +1325,7 @@ static void qpnp_batt_external_power_changed(struct power_supply *psy)
 			chip->usb_psy_ma = current_ma;
 			qpnp_lbc_set_appropriate_current(chip);
 			qpnp_lbc_charger_enable(chip, CURRENT, 1);
+                        TP_charger_change_state(1);
 		}
 	}
 
