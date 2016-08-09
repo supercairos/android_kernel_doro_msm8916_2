@@ -3561,8 +3561,6 @@ long kgsl_ioctl_gpumem_alloc(struct kgsl_device_private *dev_priv,
 err:
 	kgsl_sharedmem_free(&entry->memdesc);
 	kfree(entry);
-
-	kgsl_mem_entry_commit_process(private, entry);
 	return result;
 }
 
@@ -3599,6 +3597,8 @@ long kgsl_ioctl_gpumem_alloc_id(struct kgsl_device_private *dev_priv,
 	param->size = entry->memdesc.size;
 	param->mmapsize = kgsl_memdesc_mmapsize(&entry->memdesc);
 	param->gpuaddr = entry->memdesc.gpuaddr;
+
+	kgsl_mem_entry_commit_process(private, entry);
 	return result;
 err:
 	if (entry)

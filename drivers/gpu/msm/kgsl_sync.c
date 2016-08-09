@@ -543,16 +543,16 @@ long kgsl_ioctl_syncsource_destroy(struct kgsl_device_private *dev_priv,
 {
 	struct kgsl_syncsource_destroy *param = data;
 	struct kgsl_syncsource *syncsource = NULL;
-
 	struct kgsl_process_private *private = dev_priv->process_priv;
 
 	spin_lock(&private->syncsource_lock);
-	syncsource = idr_find(&private->syncsource_idr, param->id); 
+	syncsource = idr_find(&private->syncsource_idr, param->id);
 
 	if (syncsource) {
 		idr_remove(&private->syncsource_idr, param->id);
 		syncsource->id = 0;
 	}
+
 	spin_unlock(&private->syncsource_lock);
 
 	if (syncsource == NULL)
